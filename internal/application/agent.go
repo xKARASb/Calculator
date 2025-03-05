@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"https://github.com/xKARASb/Calculator/pkg/rpn"
+	"github.com/xKARASb/Calculator/pkg/rpn"
 )
 
 var AgentReqestTime = time.Millisecond * 1

@@ -8,7 +8,7 @@ import (
 
 	"net/http/httptest"
 
-	"https://github.com/xKARASb/Calculator/pkg/rpn"
+	"github.com/xKARASb/Calculator/pkg/rpn"
 
 	app "github.com/xKARASb/Calculator/internal/application"
 )

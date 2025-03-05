@@ -1,7 +1,7 @@
 package main
 
 import (
-	app "https://github.com/xKARASb/calculator/internal/application"
+	app "github.com/xKARASb/Calculator/internal/application"
 )
 
 func main() {

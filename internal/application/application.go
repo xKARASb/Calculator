@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"https://github.com/xKARASb/Calculator/internal/web"
-	"https://github.com/xKARASb/Calculator/pkg/dir"
-	"https://github.com/xKARASb/Calculator/pkg/rpn"
+	"github.com/xKARASb/Calculator/internal/web"
+	"github.com/xKARASb/Calculator/pkg/dir"
+	"github.com/xKARASb/Calculator/pkg/rpn"
 
 	"github.com/gorilla/mux"
 )
@@ -37,7 +37,7 @@ func (app *Application) RunServer() {
 		if app.Config.Debug {
 			log.Println("Orkestrator Runned")
 		}
-		err := http.ListenAndServe(":8080", nil)
+		err := http.ListenAndServe("localhost:8080", nil)
 		panic(err)
 	}()
 	app.Router.HandleFunc("/api/v1/calculate", app.AddExpressionHandler)
