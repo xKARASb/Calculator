@@ -43,8 +43,12 @@ git clone https://github.com/xKARASb/Calculator
 ```
 cd <путь к папке Calculator>
 ```
- - Далее надо запустить файл ```./cmd/main.go```:
+ - Установить зависимости:
+```bash
+go mod download
 ```
+ - Далее надо запустить файл ```./cmd/main.go```:
+```bash
 go run ./cmd/main.go
 ```
 
