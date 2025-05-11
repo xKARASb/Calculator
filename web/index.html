@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Calculator API Tester</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .section {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input {
+            padding: 5px;
+            width: 300px;
+            font-family: monospace;
+        }
+        button {
+            padding: 5px 10px;
+            margin-left: 5px;
+            font-family: monospace;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        .endpoint {
+            color: #666;
+            font-size: 12px;
+        }
+        #authSection {
+            background: #e3f2fd;
+        }
+        .login-status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Calculator API Tester</h1>
+
+    <!-- Секция авторизации -->
+    <div class="section" id="authSection">
+        <h3>Авторизация</h3>
+        <div class="input-group">
+            <input type="text" id="login" placeholder="Логин">
+            <input type="password" id="password" placeholder="Пароль">
+            <button onclick="login()">Войти</button>
+            <button onclick="register()">Регистрация</button>
+        </div>
+        <div class="login-status" id="login-status">Статус: Не авторизован</div>
+    </div>
+
+    <div class="section">
+        <h3>Calculate Expression</h3>
+        <div class="endpoint">POST /api/v1/calculate</div>
+        <div class="input-group">
+            <input type="text" id="expression" placeholder="Enter expression (e.g., (2+2)*2-3)">
+            <button onclick="calculate()">Calculate</button>
+        </div>
+        <pre id="calculate-result">Response will appear here</pre>
+    </div>
+
+    <div class="section">
+        <h3>Get Expression by ID</h3>
+        <div class="endpoint">GET /api/v1/expressions/:id</div>
+        <div class="input-group">
+            <input type="number" id="expression-id" placeholder="Enter expression ID">
+            <button onclick="getExpression()">Get Expression</button>
+        </div>
+        <pre id="expression-result">Response will appear here</pre>
+    </div>
+
+    <div class="section">
+        <h3>Get All Expressions</h3>
+        <div class="endpoint">GET /api/v1/expressions</div>
+        <div class="input-group">
+            <button onclick="getAllExpressions()">Get All</button>
+        </div>
+        <pre id="all-expressions-result">Response will appear here</pre>
+    </div>
+
+    <div class="section">
+        <h3>Get Current Task</h3>
+        <div class="endpoint">GET /internal/task</div>
+        <div class="input-group">
+            <button onclick="getCurrentTask()">Get Task</button>
+        </div>
+        <pre id="task-result">Response will appear here</pre>
+    </div>
+
+    <script>
+        function showResponse(elementId, data) {
+            document.getElementById(elementId).textContent = JSON.stringify(data, null, 2);
+        }
+
+        // Проверка авторизации при загрузке
+        window.onload = function() {
+            const token = localStorage.getItem('jwt_token');
+            if (token) {
+                document.getElementById('login-status').textContent = 'Статус: Авторизован';
+                document.getElementById('login-status').style.color = 'green';
+            }
+        }
+
+        // Функция для добавления токена к запросам
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('jwt_token');
+            const headers = options.headers || {};
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            return fetch(url, {...options, headers});
+        }
+
+        // Функция для регистрации
+        async function register() {
+            const login = document.getElementById('login').value;
+            const password = document.getElementById('password').value;
+            
+            if (!login || !password) {
+                alert('Введите логин и пароль');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/v1/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Регистрация успешна. Теперь войдите.');
+                } else {
+                    alert('Ошибка регистрации: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        // Функция для логина
+        async function login() {
+            const login = document.getElementById('login').value;
+            const password = document.getElementById('password').value;
+            
+            if (!login || !password) {
+                alert('Введите логин и пароль');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/v1/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    localStorage.setItem('jwt_token', data.token);
+                    document.getElementById('login-status').textContent = 'Статус: Авторизован';
+                    document.getElementById('login-status').style.color = 'green';
+                    alert('Вход выполнен успешно');
+                } else {
+                    alert('Ошибка входа: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        async function calculate() {
+            const expr = document.getElementById('expression').value;
+            try {
+                const response = await fetchWithAuth('/api/v1/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expression: expr })
+                });
+                const data = await response.json();
+                showResponse('calculate-result', data);
+            } catch (error) {
+                showResponse('calculate-result', { error: error.message });
+            }
+        }
+
+        async function getExpression() {
+            const id = document.getElementById('expression-id').value;
+            try {
+                const response = await fetchWithAuth(`/api/v1/expressions/${id}`);
+                const data = await response.json();
+                showResponse('expression-result', data);
+            } catch (error) {
+                showResponse('expression-result', { error: error.message });
+            }
+        }
+
+        async function getAllExpressions() {
+            try {
+                const response = await fetchWithAuth('/api/v1/expressions');
+                const data = await response.json();
+                showResponse('all-expressions-result', data);
+            } catch (error) {
+                showResponse('all-expressions-result', { error: error.message });
+            }
+        }
+
+        async function getCurrentTask() {
+            try {
+                const response = await fetchWithAuth('/internal/task');
+                const data = await response.json();
+                showResponse('task-result', data);
+            } catch (error) {
+                showResponse('task-result', { error: error.message });
+            }
+        }
+    </script>
+</body>
+</html>

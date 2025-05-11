@@ -1,0 +1,89 @@
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: dockerfiles/orchestrator/Dockerfile
+    image: orchestrator:latest
+    env_file:
+      - .env
+    ports:
+      - "${PORT}:${PORT}"
+    networks:
+      - default
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  agent:
+    build:
+      context: .
+      dockerfile: dockerfiles/agent/Dockerfile
+    image: agent:latest
+    env_file:
+      - .env
+    networks:
+      - default
+    depends_on:
+      - orchestrator
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_container
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+    env_file:
+      - .env
+    volumes:
+      - ~/postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+
+  redis:
+    image: redis:7
+    container_name: redis_container
+    environment:
+      REDIS_PORT: ${REDIS_PORT}
+    env_file:
+      - .env
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    volumes:
+      - ~/redis_data:/data
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+
+  migrate:
+    image: migrate/migrate
+    container_name: migrate_container
+    command:
+      [ "-path", "/migrations", "-database",  "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable", "up" ]
+    volumes:
+      - ./migrations:/migrations
+    links:
+      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+    env_file:
+      - .env

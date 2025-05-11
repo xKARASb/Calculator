@@ -1,6 +1,6 @@
 # Calculator
 
-Финальный проект второго спринта годового курса Go от Я.Лицея
+Финальный проект годового курса Go от Я.Лицея
 
 ## Установка
 
@@ -11,255 +11,182 @@ cd <your_dir>
  - Потом необходимо выполнить эту команду:
 ```bash
 git clone https://github.com/xKARASb/Calculator
+cd Calculator
 ```
- - В выбранной папке появится папка ```Calculator``` c проектом.
 
 ## Использование
 
-### Конфигурация
-#### Переменные среды
-Сначала необходимо открыть файл ```./config/.env``` и установить параметры:
-
- - **TIME_ADDITION_MS** - время вычисления сложения(в миллисекундах);
-
- - **TIME_SUBTRACTION_MS** - время вычисления вычитания;
-
- - **TIME_MULTIPLICATIONS_MS** - время вычисления умножения;
-
- - **TIME_DIVISIONS_MS** - время вычисления деления;
-
- - **COMPUTING_POWER** - максмальное количество *worker*'ов, которые параллельно выполняют арифметические действия.
-
-#### Другие параметры
-
-Потом необходимо открыть файл ```config.json``` в той же папке и установить следущие параметры(**true** - включено, **false** - выключено):
-
- - ```web``` - веб-интерфейс(подробнее в **Веб-интерфейс**)
-
-По умолчанию выключено.
-
-### Запуск
- - Для запуска API необходимо выбрать директорию проекта:
+### Docker Compose запуск (рекомендуется)
 ```
-cd <путь к папке Calculator>
+# Запускаем сервисы через Docker Compose
+docker-compose build
+docker-compose up -d
 ```
- - Установить зависимости:
+
+Сервисы будут доступны по адресу `http://localhost:8080`
+
+### Остановка сервисов
+
 ```bash
-go mod download
+docker-compose down
 ```
- - Далее надо запустить файл ```./cmd/main.go```:
+
+### Запуск из исходников
+
+1. Сначала необходимо открыть файл ```example.env``` и установить ваши параметры вместо дефолтных:
+```env
+PORT=8080
+COMPOUNDING_POWER=10
+
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=123
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=users
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+ORCHESTRATOR_HOST=localhost
+```
+2. Переименуйте ```example.env``` -> ```.env```
+
+3. Проверьте, что PostgreSQL и Redis запущены согласно конфигу
+4. Запустите оркестратор и агенты паралельно:
+
 ```bash
-go run ./cmd/main.go
+go run ./cmd/orchestrator/main.go
+
+go run ./cmd/agent/main.go
 ```
+
+> [!IMPORTANT]
+> В Docker Compose окружении сервисы используют имена сервисов вместо `localhost`. При запуске напрямую из Go необходимо изменить адреса в `.env` файле для правильного соединения с базами данных и между сервисами.
 
 ## Использование API
 #### Добавление вычисления арифметического выражения
 
 ##### Curl
-```
-curl --location 'localhost/api/v1/calculate' \
+### Расчёт выражения
+
+#### Запрос
+
+```bash
+curl --location 'localhost:8080/api/v1/calculate' \
 --header 'Content-Type: application/json' \
 --data '{
-  "expression": <выражение>
-}'
-```
-##### Коды ответа: 
- - 201 - выражение принято для вычисления
- - 422 - невалидные данные
- - 500 - что-то пошло не так
-
-##### Тело ответа
-
-```
-{
-    "id": <уникальный идентификатор выражения> // его ID
-}
-```
-#### Все выражения
-##### Curl
-```
-curl --location 'localhost/api/v1/expressions'
-```
-##### Тело ответа:
-
-```
-{
-    "expressions": [
-        {
-            "id": 1,
-            "status": "OK",
-            "result": 3>
-        },
-        {
-            "id": 1,
-            "status": "Wait",
-            "result": 0
-        }
-    ]
-}
-```
-##### Коды ответа:
- - 200 - успешно получен список выражений
- - 500 - что-то пошло не так
-
-#### Получение выражения по его id
-
-Получение выражения по его идентификатору.
-##### Curl
-
-```
-curl --location 'localhost/api/v1/expressions/<id>'
-```
-
-##### Тело ответа:
-
-```
-{
-    "expression":
-        {
-            "id": <идентификатор выражения>,
-            "status": <статус вычисления выражения>,
-            "result": <результат выражения>
-        }
-}
-```
-
-##### Коды ответа:
- - 200 - успешно получено выражение
- - 404 - нет такого выражения
- - 500 - что-то пошло не так
-
-## Примеры работы с API
-#### Делаем запрос для вычисление выражения
-
-##### Curl
-```
-curl --location 'localhost/api/v1/calculate' \
---header 'Content-Type: application/json' \
---data '{
-  "expression": "2+2/2"
+  "expression": "2+2*2"
 }'
 ```
 
-##### Ответ
-Статус 201(успешно создано);
-```
+#### Успешный ответ (HTTP 200)
+
+```json
 {
-    "id": 12345
+  "id": 1
 }
 ```
 
-#### Конкретное выражение
-##### Curl
-```
-curl --location 'localhost/api/v1/expressions/12345'
-```
+### Примеры с различными выражениями
 
-##### Ответ
-Статус 200(успешно получено);
-```
-{
-    "expression":
-        {
-            "id": 12345,
-            "status": "OK",
-            "result": 321
-        }
-}
-```
+#### Простое сложение
 
-#### Все выражения
-##### Curl
-```
-curl --location 'localhost/api/v1/expressions'
-```
-
-##### Ответ
-Статус 200(успешно получены);
-```
-{
-    "expressions": [
-        {
-            "id": 12345,
-            "status": "OK",
-            "result": 321
-        },
-    ]
-}
-```
-
-### Пример с ошибкой в запросе
-
-#### Делаем **неправильный** запрос на вычисление выражения
-
-##### Curl
-
-```
-curl --location 'localhost/api/v1/calculate' \
+```bash
+curl --location 'localhost:8080/api/v1/calculate' \
 --header 'Content-Type: application/json' \
 --data '{
-  "adfsfds": "2+2/2"
+  "expression": "2+2"
 }'
 ```
 
-##### Ответ
-Статус 422(**неправильный** запрос);
+#### Сложное выражение со скобками
 
-
-### Пример с ошибкой в запросе
-
-#### Делаем **правильный** запрос на вычисление выражения
-
-##### Curl
-```
-curl --location 'localhost/api/v1/calculate' \
+```bash
+curl --location 'localhost:8080/api/v1/calculate' \
 --header 'Content-Type: application/json' \
 --data '{
-  "expression": "2+2/2"
+  "expression": "(10+2)*2"
 }'
 ```
-##### Ответ
-Статус 201(успешно создано);
+
+### Обработка ошибок
+
+#### Деление на ноль
+
+```bash
+curl --location 'localhost:8080/api/v1/calculate' \
+--header 'Content-Type: application/json' \
+--data '{
+  "expression": "1/0"
+}'
 ```
+
+#### Ответ (HTTP 400)
+
+```json
 {
-    "id": 12345 // пример
+  "message": "division by zero"
 }
 ```
-#### Далее получаем наше выражение(**неправильный** ID)
-##### Curl
-```
-curl --location 'localhost/api/v1/expressions/45362'
-```
 
-##### Ответ
-Статус 404(не найдено);
+#### Некорректный синтаксис
 
-
-### Пример с ошибкой в запросе
-
-#### Делаем запрос с **некорректным** URL на вычисление выражения
-
-##### Curl
-```
-curl --location 'localhost/api/v1/abc' \
+```bash
+curl --location 'localhost:8080/api/v1/calculate' \
 --header 'Content-Type: application/json' \
 --data '{
-  "expression": "121+2"
+  "expression": "2++2"
 }'
 ```
 
-##### Ответ
-Статус 404(**NOT FOUND**);
+#### Ответ (HTTP 400)
 
+```json
+{
+  "message": "invalid expression"
+}
+```
 
-### Веб-интерфейс
+## Структура проекта
 
-Вот ссылки на веб-страницы:
+```
+.
+├── cmd/                    # Точки входа
+│   ├── agent/              # Запуск агента
+│   └── orchestrator/       # Запуск оркестратора
+├── internal/               # Внутренняя логика
+│   ├── agent/              # Логика агента
+│   ├── config/             # Конфигурация
+│   └── orchestrator/       # Логика оркестратора
+├── pkg/                    # Общие пакеты
+│   ├── db/                 # Работа с базами данных
+│   ├── models/             # Модели данных
+│   ├── tests/              # Тесты
+│   └── utils/              # Утилиты
+├── dockerfiles/            # Докерфайлы
+├── migrations/             # Миграции БД
+└── web/                    # Веб-интерфейс
+```
 
- - [Главная страница](http://localhost:8080/api/v1/web)
+## Веб-интерфейс
 
- - [Вычисление выражения](http://localhost:8080/api/v1/web/calculate)
+Обыкновенный веб-интерфейс: `http://localhost:8080/`
 
- - [Просмотр выражений](http://localhost:8080/api/v1/web/expressions)
+## Тестирование
 
-****ВАЖНО:**** По умолчанию веб-интерфейс выключен. Чтобы его включить, нужно изменить параметр *Веб интерфейс* в **Конфигурация/Другие Параметры**.
+```bash
+# Запуск unit-тестов
+go test ./pkg/tests -v
+
+# Запуск только интеграционных тестов
+go test ./pkg/tests -v -run TestIntegration
+
+# Пропуск интеграционных тестов
+SKIP_INTEGRATION=true go test ./pkg/tests -v
+```
+
+## Дополнительные возможности
+
+## Автор
+
+[xKARASb](https://github.com/xkarasb)
